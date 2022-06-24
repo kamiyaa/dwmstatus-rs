@@ -15,7 +15,7 @@ pub struct AppConfigRaw {
     #[serde(default)]
     pub battery_file: Option<PathBuf>,
     #[serde(default)]
-    pub battery_denominator: Option<f32>,
+    pub battery_drain: Option<PathBuf>,
 }
 
 impl From<AppConfigRaw> for AppConfig {
@@ -25,7 +25,7 @@ impl From<AppConfigRaw> for AppConfig {
             cpu_temp_denominator: raw.cpu_temp_denominator,
 
             battery_file: raw.battery_file,
-            battery_denominator: raw.battery_denominator,
+            battery_drain: raw.battery_drain,
         }
     }
 }

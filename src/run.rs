@@ -54,6 +54,14 @@ fn print_info(config: &AppConfig, sys: &systemstat::System) -> Result<(), std::i
     } else {
         None
     };
+    let battery_drain = if let Some(p) = config.battery_drain.as_ref() {
+        match read_to_usize(p) {
+            Ok(charge) => Some(charge),
+            _ => None,
+        }
+    } else {
+        None
+    };
 
     let uptime: chrono::Duration = match chrono::Duration::from_std(sys.uptime()?) {
         Ok(s) => s,
@@ -110,7 +118,10 @@ fn print_info(config: &AppConfig, sys: &systemstat::System) -> Result<(), std::i
         print!("{:.1}\u{00B0}C \u{2502} ", temp);
     }
     if let Some(battery) = battery_charge {
-        print!("[{:.1}%] \u{2502} ", battery);
+        match battery_drain {
+            Some(0) => print!("[{:.1}%+] \u{2502} ", battery),
+            _ => print!("[{:.1}%] \u{2502} ", battery),
+        }
     }
 
     println!(

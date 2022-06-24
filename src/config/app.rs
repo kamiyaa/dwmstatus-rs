@@ -11,7 +11,7 @@ pub struct AppConfig {
     pub cpu_temp_denominator: Option<f32>,
 
     pub battery_file: Option<PathBuf>,
-    pub battery_denominator: Option<f32>,
+    pub battery_drain: Option<PathBuf>,
 }
 
 impl AppConfig {
