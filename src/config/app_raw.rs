@@ -5,27 +5,37 @@ use serde_derive::Deserialize;
 
 use crate::config::{parse_to_config_file, AppConfig, TomlConfigFile};
 
+use super::app::{AppBatteryConfig, AppCpuConfig};
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct AppCpuConfigRaw {
+    #[serde(default)]
+    pub temperature: Option<PathBuf>,
+    #[serde(default)]
+    pub temperature_denominator: Option<f32>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct AppBatteryConfigRaw {
+    #[serde(default)]
+    pub percentage: Option<PathBuf>,
+    #[serde(default)]
+    pub status: Option<PathBuf>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct AppConfigRaw {
     #[serde(default)]
-    pub cpu_temp_file: Option<PathBuf>,
+    pub cpu: AppCpuConfigRaw,
     #[serde(default)]
-    pub cpu_temp_denominator: Option<f32>,
-
-    #[serde(default)]
-    pub battery_file: Option<PathBuf>,
-    #[serde(default)]
-    pub battery_drain: Option<PathBuf>,
+    pub battery: AppBatteryConfigRaw,
 }
 
 impl From<AppConfigRaw> for AppConfig {
     fn from(raw: AppConfigRaw) -> Self {
         Self {
-            cpu_temp_file: raw.cpu_temp_file,
-            cpu_temp_denominator: raw.cpu_temp_denominator,
-
-            battery_file: raw.battery_file,
-            battery_drain: raw.battery_drain,
+            cpu: AppCpuConfig::from(raw.cpu),
+            battery: AppBatteryConfig::from(raw.battery),
         }
     }
 }

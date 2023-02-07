@@ -1,6 +1,14 @@
 
-cpu_temp_file = "/sys/class/hwmon/hwmon0/temp1_input"
-cpu_temp_denominator = 1000.0
+# Setup 1
+# [cpu]
+# temperature = "/sys/class/hwmon/hwmon0/temp1_input"
+# temperature_denominator = 1000.0
 
-battery_file = "/sys/class/power_supply/BAT0/capacity"
-battery_drain = "/sys/class/power_supply/BAT0/power_now"
+# Setup 2
+[cpu]
+temperature = "/sys/class/hwmon/hwmon0/temp1_input"
+temperature_denominator = 1000.0
+
+[battery]
+percentage = "/sys/class/power_supply/BAT0/capacity"
+status = "/sys/class/power_supply/BAT0/status"
