@@ -1,4 +1,5 @@
 use std::fs;
+use std::fs::read_to_string;
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
@@ -81,28 +82,30 @@ fn generate_status_bar_string(
         saturating_sub_bytes(mem.total, mem.free)
     ));
 
-    if let (Some(path), Some(denom)) = (
-        config.cpu_temp_file.as_ref(),
-        config.cpu_temp_denominator.as_ref(),
-    ) {
+    if let Some(path) = config.cpu.temperature_file.as_ref() {
         if let Ok(temp) = read_to_usize(path) {
-            let temp_normalized = temp as f32 / *denom;
+            let temp_normalized = match &config.cpu.temperature_denominator {
+                Some(denom) => temp as f32 / *denom,
+                None => temp as f32,
+            };
             status_bar.push_str(&format!("{:.1}\u{00B0}C \u{2502} ", temp_normalized));
         }
     }
 
-    if let Some(path) = config.battery_file.as_ref() {
+    if let Some(path) = config.battery.charge_file.as_ref() {
         if let Ok(charge) = read_to_usize(path) {
-            let ac_online = config
-                .ac_file
-                .as_ref()
-                .and_then(|path| read_to_usize(path).ok());
-            match ac_online {
-                Some(ac_online) if ac_online == 1 => {
-                    status_bar.push_str(&format!("[{:.1}%+] \u{2502} ", charge));
-                }
-                _ => {
-                    status_bar.push_str(&format!("[{:.1}%] \u{2502} ", charge));
+            if let Some(status_path) = config.battery.status_file.as_ref() {
+                let status = read_to_string(status_path)?;
+                match status.as_str() {
+                    "Charging" => {
+                        status_bar.push_str(&format!("[{:.1}%+] \u{2502} ", charge));
+                    }
+                    "Discharging" => {
+                        status_bar.push_str(&format!("[{:.1}%-] \u{2502} ", charge));
+                    }
+                    _ => {
+                        status_bar.push_str(&format!("[{:.1}%=] \u{2502} ", charge));
+                    }
                 }
             }
         }
@@ -118,7 +121,6 @@ fn generate_status_bar_string(
             local_time_str
         ));
     };
-
     Ok(status_bar)
 }
 
