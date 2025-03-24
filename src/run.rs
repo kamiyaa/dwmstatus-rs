@@ -96,7 +96,7 @@ fn generate_status_bar_string(
         if let Ok(charge) = read_to_usize(path) {
             if let Some(status_path) = config.battery.status_file.as_ref() {
                 let status = read_to_string(status_path)?;
-                match status.as_str() {
+                match status.as_str().trim() {
                     "Charging" => {
                         status_bar.push_str(&format!("[{:.1}%+] \u{2502} ", charge));
                     }
@@ -104,7 +104,7 @@ fn generate_status_bar_string(
                         status_bar.push_str(&format!("[{:.1}%-] \u{2502} ", charge));
                     }
                     _ => {
-                        status_bar.push_str(&format!("[{:.1}%=] \u{2502} ", charge));
+                        status_bar.push_str(&format!("[{:.1}%*] \u{2502} ", charge));
                     }
                 }
             }
