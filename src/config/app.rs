@@ -10,13 +10,15 @@ pub struct AppConfig {
     pub cpu_temp_file: Option<PathBuf>,
     pub cpu_temp_denominator: Option<f32>,
 
+    pub ac_file: Option<PathBuf>,
+
     pub battery_file: Option<PathBuf>,
     pub battery_denominator: Option<f32>,
 }
 
 impl AppConfig {
     pub fn default_res() -> io::Result<Self> {
-        let raw: AppConfigRaw = toml::from_str(DEFAULT_CONFIG_FILE_PATH)?;
+        let raw: AppConfigRaw = toml::from_str(DEFAULT_CONFIG_FILE_PATH).unwrap();
         Ok(Self::from(raw))
     }
 }

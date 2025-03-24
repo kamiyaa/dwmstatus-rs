@@ -37,33 +37,12 @@ fn read_to_usize(p: &Path) -> io::Result<usize> {
     }
 }
 
-fn print_info(config: &AppConfig, sys: &systemstat::System) -> Result<(), std::io::Error> {
-    let cpu_temp = if let Some(p) = config.cpu_temp_file.as_ref() {
-        match read_to_usize(p) {
-            Ok(temp) => Some(temp as f32 / 1000.0),
-            _ => None,
-        }
-    } else {
-        None
-    };
-    let battery_charge = if let Some(p) = config.battery_file.as_ref() {
-        match read_to_usize(p) {
-            Ok(charge) => Some(charge),
-            _ => None,
-        }
-    } else {
-        None
-    };
+fn generate_status_bar_string(
+    config: &AppConfig,
+    sys: &systemstat::System,
+) -> Result<String, std::io::Error> {
+    let mut status_bar: String = String::with_capacity(128);
 
-    let uptime: chrono::Duration = match chrono::Duration::from_std(sys.uptime()?) {
-        Ok(s) => s,
-        Err(e) => {
-            let err = io::Error::new(io::ErrorKind::InvalidData, e.to_string());
-            return Err(err);
-        }
-    };
-
-    let mem = sys.memory()?;
     let networks = sys.networks()?;
 
     let mut network_status = NetworkStatus::Disconnected;
@@ -93,34 +72,54 @@ fn print_info(config: &AppConfig, sys: &systemstat::System) -> Result<(), std::i
         NetworkStatus::UsbTether => "]~~~[",
         NetworkStatus::Disconnected => "--/--",
     };
+    status_bar.push_str(&format!("{network_str} \u{2502} "));
+
+    let mem = sys.memory()?;
+
+    status_bar.push_str(&format!(
+        "{} \u{2502} ",
+        saturating_sub_bytes(mem.total, mem.free)
+    ));
+
+    if let (Some(path), Some(denom)) = (
+        config.cpu_temp_file.as_ref(),
+        config.cpu_temp_denominator.as_ref(),
+    ) {
+        if let Ok(temp) = read_to_usize(path) {
+            let temp_normalized = temp as f32 / *denom;
+            status_bar.push_str(&format!("{:.1}\u{00B0}C \u{2502} ", temp_normalized));
+        }
+    }
+
+    if let Some(path) = config.battery_file.as_ref() {
+        if let Ok(charge) = read_to_usize(path) {
+            let ac_online = config
+                .ac_file
+                .as_ref()
+                .and_then(|path| read_to_usize(path).ok());
+            match ac_online {
+                Some(ac_online) if ac_online == 1 => {
+                    status_bar.push_str(&format!("[{:.1}%+] \u{2502} ", charge));
+                }
+                _ => {
+                    status_bar.push_str(&format!("[{:.1}%] \u{2502} ", charge));
+                }
+            }
+        }
+    }
 
     let local_time = chrono::Local::now();
-    let local_time_str = local_time.format("%a %m/%d  %I:%M");
+    let local_time_str = local_time.format("%a %m/%d  %H:%M");
+    if let Ok(uptime) = chrono::Duration::from_std(sys.uptime()?) {
+        status_bar.push_str(&format!(
+            "{:02}:{:02} \u{2502} {} ",
+            uptime.num_hours(),
+            uptime.num_minutes() % 60,
+            local_time_str
+        ));
+    };
 
-    let pst_time = local_time - chrono::Duration::hours(3);
-    let pst_time_str = pst_time.format("%I:%M PST");
-
-    print!(
-        "{} \u{2502} {} \u{2502} ",
-        network_str,
-        saturating_sub_bytes(mem.total, mem.free)
-    );
-
-    if let Some(temp) = cpu_temp {
-        print!("{:.1}\u{00B0}C \u{2502} ", temp);
-    }
-    if let Some(battery) = battery_charge {
-        print!("[{:.1}%] \u{2502} ", battery);
-    }
-
-    println!(
-        "{:02}:{:02} \u{2502} {} {} ",
-        uptime.num_hours(),
-        uptime.num_minutes() % 60,
-        pst_time_str,
-        local_time_str
-    );
-    Ok(())
+    Ok(status_bar)
 }
 
 pub fn run(config: AppConfig) {
@@ -128,10 +127,12 @@ pub fn run(config: AppConfig) {
     let refresh_rate = std::time::Duration::from_secs(5);
 
     loop {
-        match print_info(&config, &sys) {
-            Ok(_) => {}
-            Err(e) => {
-                println!("{}", e);
+        match generate_status_bar_string(&config, &sys) {
+            Ok(s) => {
+                println!("{s}");
+            }
+            Err(err) => {
+                println!("{err}");
             }
         }
         std::thread::sleep(refresh_rate);
