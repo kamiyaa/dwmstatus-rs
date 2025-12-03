@@ -112,7 +112,9 @@ fn generate_status_bar_string(
     }
 
     let local_time = chrono::Local::now();
-    let local_time_str = local_time.format("%a %m/%d  %H:%M");
+    // 24 hr clock
+    // let local_time_str = local_time.format("%a %m/%d  %H:%M");
+    let local_time_str = local_time.format("%I:%M %p  %a %m/%d");
     if let Ok(uptime) = chrono::Duration::from_std(sys.uptime()?) {
         status_bar.push_str(&format!(
             "{:02}:{:02} \u{2502} {} ",
