@@ -7,6 +7,7 @@ use super::app_raw::{AppBatteryConfigRaw, AppConfigRaw, AppCpuConfigRaw};
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
+    pub poll_rate: u64,
     pub cpu: AppCpuConfig,
     pub battery: AppBatteryConfig,
 }

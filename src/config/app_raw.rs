@@ -7,6 +7,10 @@ use crate::config::{parse_to_config_file, AppConfig, TomlConfigFile};
 
 use super::app::{AppBatteryConfig, AppCpuConfig};
 
+const fn default_poll_rate() -> u64 {
+    5000
+}
+
 #[derive(Clone, Debug, Default, Deserialize)]
 pub struct AppCpuConfigRaw {
     #[serde(default)]
@@ -25,6 +29,8 @@ pub struct AppBatteryConfigRaw {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct AppConfigRaw {
+    #[serde(default = "default_poll_rate")]
+    pub poll_rate: u64,
     #[serde(default)]
     pub cpu: AppCpuConfigRaw,
     pub battery: AppBatteryConfigRaw,
@@ -33,6 +39,7 @@ pub struct AppConfigRaw {
 impl From<AppConfigRaw> for AppConfig {
     fn from(raw: AppConfigRaw) -> Self {
         Self {
+            poll_rate: raw.poll_rate,
             cpu: AppCpuConfig::from(raw.cpu),
             battery: AppBatteryConfig::from(raw.battery),
         }

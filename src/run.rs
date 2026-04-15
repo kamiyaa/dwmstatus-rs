@@ -1,42 +1,6 @@
-use std::fs;
-use std::fs::read_to_string;
-use std::io;
-use std::io::prelude::*;
-use std::path::Path;
-
 use systemstat::{saturating_sub_bytes, Platform};
 
-use crate::config::AppConfig;
-
-#[derive(Copy, Clone, Debug)]
-enum NetworkStatus {
-    Ethernet,
-    Wireless,
-    UsbTether,
-    Disconnected,
-}
-
-fn read_to_usize(p: &Path) -> io::Result<usize> {
-    let mut file = fs::File::open(p)?;
-
-    let mut s = String::new();
-    match file.read_to_string(&mut s) {
-        Ok(_) => {
-            let stripped = s.trim();
-            match stripped.parse::<usize>() {
-                Ok(u) => Ok(u),
-                Err(_) => Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Failed to parse value".to_string(),
-                )),
-            }
-        }
-        Err(_) => Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "Failed to read value".to_string(),
-        )),
-    }
-}
+use crate::{config::AppConfig, types::{BatteryState, NetworkStatus}, utils::read_to_usize};
 
 fn generate_status_bar_string(
     config: &AppConfig,
@@ -68,12 +32,12 @@ fn generate_status_bar_string(
     }
 
     let network_str = match network_status {
-        NetworkStatus::Wireless => "(---)",
-        NetworkStatus::Ethernet => "]---[",
-        NetworkStatus::UsbTether => "]~~~[",
-        NetworkStatus::Disconnected => "--/--",
+        NetworkStatus::Wireless => "\u{1F6DC}",
+        NetworkStatus::Ethernet => "\u{1F5A5}",
+        NetworkStatus::UsbTether => "\u{1F4F1}",
+        NetworkStatus::Disconnected => "\u{274C}",
     };
-    status_bar.push_str(&format!("{network_str} \u{2502} "));
+    status_bar.push_str(&format!("\u{1F310} {network_str} \u{2502} "));
 
     let mem = sys.memory()?;
 
@@ -92,33 +56,20 @@ fn generate_status_bar_string(
         }
     }
 
-    if let Some(path) = config.battery.charge_file.as_ref() {
-        if let Ok(charge) = read_to_usize(path) {
-            if let Some(status_path) = config.battery.status_file.as_ref() {
-                let status = read_to_string(status_path)?;
-                match status.as_str().trim() {
-                    "Charging" => {
-                        status_bar.push_str(&format!("[{:.1}%+] \u{2502} ", charge));
-                    }
-                    "Discharging" => {
-                        status_bar.push_str(&format!("[{:.1}%-] \u{2502} ", charge));
-                    }
-                    _ => {
-                        status_bar.push_str(&format!("[{:.1}%*] \u{2502} ", charge));
-                    }
-                }
-            }
-        }
+    let battery_state = BatteryState::from_config(&config.battery);
+    if let Some(state) = battery_state {
+        status_bar.push_str(&state.to_status_string());
     }
 
     let local_time = chrono::Local::now();
     // 24 hr clock
     // let local_time_str = local_time.format("%a %m/%d  %H:%M");
-    let local_time_str = local_time.format("%I:%M %p  %a %m/%d");
+    let local_time_str = local_time.format("%a %m/%d  %I:%M %p");
     if let Ok(uptime) = chrono::Duration::from_std(sys.uptime()?) {
         status_bar.push_str(&format!(
-            "{:02}:{:02} \u{2502} {} ",
-            uptime.num_hours(),
+            "\u{25b2} {}d {:02}h {:02}m \u{2502} {} ",
+            uptime.num_days(),
+            uptime.num_hours() % 24,
             uptime.num_minutes() % 60,
             local_time_str
         ));
@@ -128,7 +79,7 @@ fn generate_status_bar_string(
 
 pub fn run(config: AppConfig) {
     let sys = systemstat::System::new();
-    let refresh_rate = std::time::Duration::from_secs(5);
+    let refresh_rate = std::time::Duration::from_millis(config.poll_rate);
 
     loop {
         match generate_status_bar_string(&config, &sys) {
